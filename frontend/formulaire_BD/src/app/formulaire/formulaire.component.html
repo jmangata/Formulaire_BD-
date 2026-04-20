@@ -1,0 +1,204 @@
+<!-- Wrapper principal du formulaire -->
+<div class="form-wrapper">
+
+  <!-- En-tête du formulaire -->
+  <div class="form-header">
+    <h1>Formulaire de demande de solution logicielle</h1>
+    <p>
+      Merci de renseigner les éléments essentiels pour faciliter l’analyse de votre besoin.
+    </p>
+  </div>
+
+  <!-- Formulaire Angular réactif lié au FormGroup 'formulaire' -->
+  <form [formGroup]="formulaire" (ngSubmit)="onSubmit()" novalidate>
+
+    <!-- ─── Informations générales ───────────────────────────── -->
+    <p class="section-title">Informations générales</p>
+    <p class="section-help">
+      Commencez par identifier le demandeur, puis décrivez clairement le besoin métier.
+    </p>
+
+    <!-- Champ Utilisateur -->
+    <div class="field">
+      <label for="userid">Utilisateur <span class="required">*</span></label>
+
+      <!-- Select lié au FormControl 'userid' -->
+      <select id="userid" formControlName="userid">
+        <option value="" disabled>
+          <!-- Affiche "Chargement..." si isLoading, sinon invite à sélectionner -->
+          {{ isLoading ? 'Chargement...' : '-- Sélectionnez un utilisateur --' }}
+        </option>
+        <!-- Boucle sur la liste des utilisateurs récupérés -->
+        <option *ngFor="let u of users" [value]="u.id">
+      {{ u.nom }} {{ u.prenom }} - {{ u.fonction }} - {{ u.unite_fonctionnelle }}
+        </option>
+      </select>
+
+      <small class="field-hint">Choisissez la personne à l’origine de la demande.</small>
+
+      <!-- Message d'erreur si champ invalide et touché -->
+      <span class="err" *ngIf="formulaire.get('userid')?.invalid && formulaire.get('userid')?.touched">
+        Utilisateur obligatoire
+      </span>
+    </div>
+
+    <!-- Champ Description du besoin -->
+    <div class="field">
+      <label for="description_besoin">Description du besoin <span class="required">*</span></label>
+      <textarea
+        id="description_besoin"
+        formControlName="description_besoin"
+        placeholder="Ex : création d’un module de gestion des congés avec validation RH et tableau de suivi..."
+      ></textarea>
+      <small class="field-hint">Décrivez l’objectif, le problème rencontré et le résultat attendu.</small>
+      <span class="err" *ngIf="formulaire.get('description_besoin')?.invalid && formulaire.get('description_besoin')?.touched">
+        Description obligatoire (minimum 10 caractères)
+      </span>
+    </div>
+
+    <!-- Champ Date de réalisation -->
+    <div class="field">
+      <label for="date_realisation">Date de réalisation souhaitée</label>
+      <input id="date_realisation" type="date" formControlName="date_realisation" class="date-input" />
+      <small class="field-hint">Champ facultatif si vous avez une échéance cible.</small>
+    </div>
+
+    <!-- ─── Personnes ressources ─────────────────────────────── -->
+    <p class="section-title">Personnes ressources</p>
+    <p class="section-help">
+      Vous pouvez choisir une personne déjà enregistrée dans la base ou renseigner les champs manuellement.
+    </p>
+
+    <!-- FormArray pour les personnes ressources -->
+    <div formArrayName="personnes_ressource">
+      <!-- Boucle sur chaque personne du FormArray -->
+      <div *ngFor="let p of personnes_ressource.controls; let i = index" [formGroupName]="i" class="card">
+
+        <!-- En-tête de la carte personne -->
+        <div class="card-header">
+
+  <!-- LEFT -->
+  <span class="card-label">
+    Personne {{ i + 1 }}
+  </span>
+
+  <!-- RIGHT -->
+  <div class="card-actions">
+    <div class="field" *ngIf="p.get('mode')?.value === 'existing'"></div>
+
+<button 
+  type="button" 
+  class="btn-mode" 
+  (click)="setManualMode(i)"
+  *ngIf="p.get('mode')?.value !== 'manual'">
+  Saisir manuellement
+</button>
+
+    <button type="button" class="btn-del" (click)="removePersonne(i)">
+      Supprimer
+    </button>
+
+  </div>
+
+</div>
+
+        <!-- Select pour choisir une personne déjà existante -->
+        <div class="field">
+          <label [for]="'personne_existante_id_' + i">Choisir depuis la base</label>
+          <select
+            [id]="'personne_existante_id_' + i"
+            formControlName="personne_existante_id"
+            (change)="onPersonneSelectionnee(i)"
+          >
+            <option value="">
+              {{ '-- Remplir manuellement ou sélectionner une personne --' }}
+            </option>
+            <option *ngFor="let personne of personnesDisponibles" [value]="personne.id">
+               {{ personne.nom }} {{ personne.prenom }} - {{ personne.entites_fonctionnelles }} - {{ personne.role }}
+            </option>
+          </select>
+          <small class="field-hint">
+            La sélection préremplit les champs ci-dessous. Vous pouvez aussi saisir directement les informations.
+          </small>
+          <small class="field-hint err" *ngIf="!isLoadingPersonnes && personnesDisponibles.length === 0">
+            Aucune personne ressource trouvée en base, vérifiez votre API ou vos données.
+          </small>
+        </div>
+
+        <!-- Champs manuels pour la personne -->
+        <div class="grid2" *ngIf="personnes_ressource.at(i).get('mode')?.value === 'manual'">
+
+              <div class ="field">
+            <label>Nom</label>
+            <input formControlName="nom" placeholder="Nom" />
+          </div>
+          <div class="field">
+            <label>Prénom</label>
+            <input formControlName="prenom" placeholder="Prénom" />
+          </div>
+          <div class="field">
+            <label>Entité</label>
+            <input formControlName="entites_fonctionnelles" placeholder="Entité fonctionnelle" />
+          </div>
+          <div class="field">
+            <label>Rôle</label>
+            <input formControlName="role" placeholder="Ex : référent métier" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bouton pour ajouter une nouvelle personne -->
+    <button type="button" class="btn-add" (click)="addPersonne()">+ Ajouter une personne</button>
+
+    <!-- ─── Fonctionnalités ────────────────────────────────── -->
+    <p class="section-title">Fonctionnalités</p>
+    <p class="section-help">
+      Indiquez les fonctionnalités attendues ainsi que les profils concernés.
+    </p>
+
+    <div formArrayName="fonctionnalites">
+      <div *ngFor="let f of fonctionnalites.controls; let i = index" [formGroupName]="i" class="card">
+        <div class="card-header">
+          <span class="card-label">Fonctionnalité {{ i + 1 }}</span>
+          
+          <button type="button" class="btn-del" (click)="removeFonctionnalite(i)">Supprimer</button>
+        </div>
+
+        <!-- Nom de la fonctionnalité -->
+        <div class="field">
+          <label>Nom de la fonctionnalité <span class="required">*</span></label>
+          <input formControlName="nom" placeholder="Ex : gestion des congés" />
+          <small class="field-hint">Donnez un nom simple et concret à la fonctionnalité.</small>
+        </div>
+
+        <!-- Profils utilisateurs -->
+        <p class="profils-label">Profils utilisateurs</p>
+        <div formArrayName="profils">
+          <div *ngFor="let p of getProfils(i).controls; let j = index" [formGroupName]="j" class="profil-row">
+            <span class="badge" [ngClass]="getBadgeClass(j)">Profil {{ j + 1 }}</span>
+            <input formControlName="nom" placeholder="Ex : gestionnaire RH" />
+            <button type="button" class="btn-del-sm" (click)="removeProfil(i, j)">×</button>
+          </div>
+        </div>
+        <button type="button" class="btn-add" (click)="addProfil(i)">+ Ajouter un profil</button>
+      </div>
+    </div>
+
+    <!-- Bouton pour ajouter une fonctionnalité -->
+    <button type="button" class="btn-add" (click)="addFonctionnalite()">+ Ajouter une fonctionnalité métier</button>
+
+    <!-- Bouton de soumission -->
+    <div class="submit-row">
+      <p class="submit-note"><span class="required">*</span> Champs obligatoires</p>
+      <button type="submit" class="btn-submit" [disabled]="formulaire.invalid || isLoading">
+        Envoyer
+      </button>
+    </div>
+
+    <!-- Messages de retour -->
+    <div class="msg-ok" *ngIf="success">Formulaire envoyé avec succès !</div>
+    <div class="msg-err" *ngIf="erreur">{{ erreur }}</div>
+
+  </form>
+</div>
