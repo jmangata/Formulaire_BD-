@@ -1,0 +1,3 @@
+# 🧠 AI LEARNINGS
+
+- System initialized.

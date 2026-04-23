@@ -6,5 +6,12 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6"
-  }
+    
+  },
+  "name": "docker-test",
+  "version": "1.0.0",
+  "bin": {
+  "my-cli": "./ai/cli/index.js"
+}
+  
 }
