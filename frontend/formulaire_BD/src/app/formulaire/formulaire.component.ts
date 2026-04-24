@@ -120,7 +120,13 @@ isManual(index: number): boolean {
 
   // Supprimer une personne
   removePersonne(index: number): void {
-    this.personnes_ressource.removeAt(index);
+    const el = document.querySelectorAll('.personnes-list .card')[index] as HTMLElement;
+    if (el) {
+      el.classList.add('removing');
+      setTimeout(() => this.personnes_ressource.removeAt(index), 200);
+    } else {
+      this.personnes_ressource.removeAt(index);
+    }
   }
 
   // Lorsqu'on sélectionne une personne existante
@@ -179,7 +185,13 @@ isManual(index: number): boolean {
   }
 
   removeFonctionnalite(index: number): void {
-    this.fonctionnalites.removeAt(index);
+    const el = document.querySelectorAll('.fonctionnalites-list .card')[index] as HTMLElement;
+    if (el) {
+      el.classList.add('removing');
+      setTimeout(() => this.fonctionnalites.removeAt(index), 200);
+    } else {
+      this.fonctionnalites.removeAt(index);
+    }
   }
 
 

@@ -10,7 +10,7 @@ function buildSmartContext(decision) {
     docker: "docker-compose.yml, Dockerfile"
   };
   const constraintMap = {
-    frontend: "ReactiveForums, FormArray, Zod validation frontend",
+    frontend: "ReactiveForms, FormArray, Zod validation frontend",
     backend: "Express 5, Zod validation backend, PostgreSQL transactions",
     docker: "Docker Compose, PostGIS, pm2"
   };
