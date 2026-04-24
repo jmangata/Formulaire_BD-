@@ -17,8 +17,16 @@ async function main() {
       await require("./commands/learn").learn();
       break;
 
-    case "analyze":
-      await require("./commands/analyze").run(args[1]);
+    case "analyse":
+      await require("./commands/analyse").run(args[1]);
+      break;
+
+    case "task":
+      await require("./commands/task").run(args.slice(1));
+      break;
+
+    case "doc":
+      await require("./commands/doc").run(args.slice(1));
       break;
 
     default:
@@ -27,7 +35,10 @@ Usage:
   my-cli ask "question"
   my-cli feedback good|bad "message"
   my-cli learn
-  my-cli analyze frontend|backend|docker
+  my-cli analyse frontend|backend|docker
+  my-cli task add "task title"
+  my-cli task list
+  my-cli task complete <id>
       `);
   }
 }

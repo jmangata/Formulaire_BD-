@@ -1,6 +1,7 @@
 const { read, write } = require("../utils/memory");
 const fs = require("fs");
 const path = require("path");
+const logger = require("../utils/logger");
 
 function detectPatterns(feedback) {
   const patterns = [];
@@ -76,7 +77,7 @@ ${insights.map(i => `- ${i}`).join("\n")}
     output
   );
 
-  console.log("🧠 Learning system updated");
+  logger.success("Learning system updated");
 }
 
 module.exports = { learn };
