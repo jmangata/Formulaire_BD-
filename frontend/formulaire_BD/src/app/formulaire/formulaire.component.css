@@ -1,12 +1,18 @@
+/* ─── Portée du composant ─────────────────────────────────
+   :host cible l'élément hôte du composant Angular lui-même.
+   Définit la police de base et le mode bloc. */
 :host {
   display: block;
   font-family: "Open Sans", sans-serif;
 }
 
+/* Reset global du box-model pour éviter les débordements */
 * {
   box-sizing: border-box;
 }
 
+/* ─── Conteneur principal ─────────────────────────────────
+   Centré, limité à 700px, fond clair CTM */
 .form-wrapper {
   max-width: 700px;
   margin: 0 auto;
@@ -17,6 +23,8 @@
   min-height: 100vh;
 }
 
+/* ─── En-tête du formulaire ──────────────────────────────
+   Titre + sous-titre de présentation */
 .form-header {
   margin-bottom: 1rem;
 }
@@ -37,6 +45,8 @@
   line-height: 1.6;
 }
 
+/* ─── Titres de section ──────────────────────────────────
+   Style Rubik majuscule + accent orange CTM en bordure basse */
 .section-title {
   font-size: 11px;
   font-weight: 700;
@@ -49,6 +59,7 @@
   border-bottom: 2px solid #F29100;
 }
 
+/* Texte d'aide sous le titre de section */
 .section-help {
   margin: 0 0 1rem;
   font-size: 12px;
@@ -56,6 +67,8 @@
   line-height: 1.55;
 }
 
+/* ─── Champs de saisie ───────────────────────────────────
+   Groupe label + input/select/textarea + hints + erreurs */
 .field {
   margin-bottom: 0.95rem;
 }
@@ -71,6 +84,7 @@
   letter-spacing: 0.5px;
 }
 
+/* Styles communs pour tous les contrôles de saisie */
 .field input,
 .field select,
 .field textarea,
@@ -88,6 +102,7 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
+/* Halo orange CTM au focus (accessibilité + affordance visuelle) */
 .field input:focus,
 .field select:focus,
 .field textarea:focus,
@@ -101,10 +116,12 @@
   resize: vertical;
 }
 
+/* Largeur limitée pour le champ date (évite les étirements) */
 .date-input {
   max-width: 210px;
 }
 
+/* Texte d'aide sous un champ */
 .field-hint {
   display: block;
   margin-top: 4px;
@@ -113,10 +130,12 @@
   opacity: 0.7;
 }
 
+/* Astérisque rouge-orange pour champs obligatoires */
 .required {
   color: #F29100;
 }
 
+/* Message d'erreur de validation affiché sous le champ */
 .err {
   display: block;
   font-size: 11.5px;
@@ -124,34 +143,8 @@
   margin-top: 4px;
 }
 
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes cardOut {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.97);
-  }
-}
-
+/* ─── Card (bloc personne / fonctionnalité) ──────────────
+   Conteneur blanc avec bordure subtile, ombre légère et animation d'entrée */
 .card {
   background: #fff;
   border: 1px solid #E2E8F0;
@@ -162,17 +155,21 @@
   animation: cardIn 0.3s ease both;
 }
 
+/* État transitoire : la card joue cardOut avant d'être retirée du DOM */
 .card.removing {
   animation: cardOut 0.2s ease forwards;
   pointer-events: none;
 }
 
+/* Effet cascade : chaque card apparaît avec un léger décalage */
 .card:nth-child(1) { animation-delay: 0.05s; }
 .card:nth-child(2) { animation-delay: 0.10s; }
 .card:nth-child(3) { animation-delay: 0.15s; }
 .card:nth-child(4) { animation-delay: 0.20s; }
 .card:nth-child(5) { animation-delay: 0.25s; }
 
+/* ─── En-tête de card ────────────────────────────────────
+   Flex row : label à gauche, actions (supprimer…) à droite */
 .card-header {
   display: flex;
   align-items: center;
@@ -191,6 +188,17 @@
   gap: 6px;
 }
 
+/* Actions groupées à droite de la card (boutons mode + supprimer) */
+.card-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ─── Profils ────────────────────────────────────────────
+   Liste de profils associés à une fonctionnalité */
 .profil-row {
   display: flex;
   align-items: center;
@@ -198,6 +206,7 @@
   margin-bottom: 6px;
 }
 
+/* Titre de la liste des profils à l'intérieur d'une fonctionnalité */
 .profils-label {
   font-size: 11px;
   color: #004456;
@@ -208,6 +217,8 @@
   margin: 0.6rem 0 0.4rem;
 }
 
+/* ─── Badges profils ─────────────────────────────────────
+   Pastilles colorées en cycle (bleu, orange, vert) */
 .badge {
   font-size: 10.5px;
   padding: 2px 10px;
@@ -223,6 +234,8 @@
 .badge-purple { background: #fef3e2; color: #b45309; border-color: #fcd34d; }
 .badge-green  { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
 
+/* ─── Boutons d'action ───────────────────────────────────
+   btn-add : ajouter un bloc (personne, fonctionnalité, profil) */
 .btn-add {
   font-size: 12px;
   font-family: "Open Sans", sans-serif;
@@ -243,6 +256,8 @@
   color: #004456;
 }
 
+/* btn-del : supprimer un bloc entier (card personne ou fonctionnalité)
+   Visuellement rouge pâle au repos → rouge plein au hover */
 .btn-del {
   font-size: 11px;
   font-family: "Open Sans", sans-serif;
@@ -266,6 +281,7 @@
   transform: scale(1.04);
 }
 
+/* btn-del-sm : supprimer un profil (bouton icône corbeille circulaire) */
 .btn-del-sm {
   width: 24px;
   height: 24px;
@@ -296,6 +312,7 @@
   fill: currentColor;
 }
 
+/* btn-submit : bouton principal d'envoi, couleur orange CTM */
 .btn-submit {
   padding: 9px 28px;
   background: #F29100;
@@ -319,6 +336,7 @@
   cursor: not-allowed;
 }
 
+/* Focus visible sur tous les boutons (accessibilité clavier) */
 .btn-add:focus,
 .btn-del:focus,
 .btn-del-sm:focus,
@@ -327,6 +345,8 @@
   outline-offset: 2px;
 }
 
+/* ─── Pied de formulaire ─────────────────────────────────
+   Ligne flex : note obligatoire à gauche, bouton Envoyer à droite */
 .submit-row {
   margin-top: 1.5rem;
   display: flex;
@@ -341,6 +361,8 @@
   color: #01566C;
 }
 
+/* ─── Messages de retour ─────────────────────────────────
+   Succès : fond vert pâle */
 .msg-ok {
   padding: 10px 14px;
   background: #ecfdf5;
@@ -351,6 +373,7 @@
   margin-top: 0.75rem;
 }
 
+/* Erreur : fond rouge pâle */
 .msg-err {
   padding: 10px 14px;
   background: #fff1f2;
@@ -361,18 +384,23 @@
   margin-top: 0.75rem;
 }
 
+/* ─── Validation visuelle Angular ────────────────────────
+   ng-valid + ng-touched : bordure verte si champ valide après interaction */
 input.ng-valid.ng-touched,
 textarea.ng-valid.ng-touched,
 select.ng-valid.ng-touched {
   border-color: #6ee7b7;
 }
 
+/* ng-invalid + ng-touched : bordure rouge si champ invalide après interaction */
 input.ng-invalid.ng-touched,
 textarea.ng-invalid.ng-touched,
 select.ng-invalid.ng-touched {
   border-color: #fca5a5;
 }
 
+/* ─── Responsive mobile (< 768px) ───────────────────────
+   Réajustement padding, grilles en 1 colonne, flex en colonne */
 @media (max-width: 768px) {
   .form-wrapper {
     padding: 1rem 0.9rem 2rem;
@@ -387,7 +415,6 @@ select.ng-invalid.ng-touched {
   }
 
   .submit-row,
-  .card-header,
   .profil-row {
     flex-direction: column;
     align-items: stretch;
@@ -398,17 +425,32 @@ select.ng-invalid.ng-touched {
   }
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* ─── Animations des cards ───────────────────────────────
+   Entrée : fade + glissement vers le haut */
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.card-actions {
-  display: flex;
-  gap: 10px;
+/* Sortie : fade + remontée légère avant suppression du DOM */
+@keyframes cardOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
 }
 
+/* btn-mode : bascule vers la saisie manuelle d'une personne ressource */
 .btn-mode {
   background: #e0f2fe;
   border: 1px solid #01566C;

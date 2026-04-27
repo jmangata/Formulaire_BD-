@@ -1,3 +1,8 @@
+// ─── Repository : formulaire ──────────────────────────────────────────────
+// Ce module regroupe toutes les requêtes SQL relatives au formulaire :
+// insertion du formulaire, des fonctionnalités, des profils et des liaisons.
+
+// Insère un formulaire en base et retourne son ID généré
 async function insertFormulaire(client, formulaire) {
   const result = await client.query(
     `
@@ -9,13 +14,14 @@ async function insertFormulaire(client, formulaire) {
     [
       formulaire.userid,
       formulaire.description_besoin,
-      formulaire.date_realisation || null
+      formulaire.date_realisation || null  // date facultative
     ]
   );
 
   return result.rows[0];
 }
 
+// Insère une fonctionnalité métier et retourne son ID
 async function insertFonctionnalite(client, nom) {
   const result = await client.query(
     `
@@ -29,6 +35,7 @@ async function insertFonctionnalite(client, nom) {
   return result.rows[0];
 }
 
+// Insère un profil utilisateur et retourne son ID
 async function insertProfil(client, nom) {
   const result = await client.query(
     `
@@ -42,6 +49,8 @@ async function insertProfil(client, nom) {
   return result.rows[0];
 }
 
+// Crée la liaison N↔N entre une fonctionnalité, un profil et le formulaire
+// (table de jointure foncprofil_)
 async function linkFonctionnaliteProfil(client, payload) {
   await client.query(
     `

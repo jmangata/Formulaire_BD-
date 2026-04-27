@@ -48,10 +48,7 @@ export class FormulaireComponent implements OnInit {
   // ─── Etat global ─────────────────────────────────────────
   formulaire: FormGroup;                 // Formulaire principal
   users: User[] = [];                    // Liste utilisateurs (select)
-  personnes: any[] = [];
-  form:any[] = [];
   personnesDisponibles: PersonneDisponible[] = []; // Liste personnes existantes
-  personnesFormArray: any[] = [];
 
   isLoading = true;                      // Chargement users
   isLoadingPersonnes = true;            // Chargement personnes
@@ -77,17 +74,25 @@ export class FormulaireComponent implements OnInit {
     });
   }
 
+  private readonly STORAGE_KEY = 'formulaire_brouillon';
 
   // ─── Initialisation du composant ─────────────────────────
   ngOnInit(): void {
     this.ensureStarterBlocks();          // Ajoute au moins 1 bloc par défaut
     this.loadUsers();                   // Charge utilisateurs
     this.loadPersonnesDisponibles();    // Charge personnes existantes
+
+
+    this.formulaire.valueChanges.subscribe(() => {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.formulaire.value));
+    });
   }
-isManual(index: number): boolean {
+  // Retourne true si la personne à cet index est en mode saisie manuelle
+  isManual(index: number): boolean {
     return this.personnes_ressource.at(index).get('mode')?.value === 'manual';
   }
 
+  // Retourne true si la personne à cet index est issue d'une sélection existante
   isExisting(index: number): boolean {
     return this.personnes_ressource.at(index).get('mode')?.value === 'existing';
   }
@@ -129,8 +134,11 @@ isManual(index: number): boolean {
     }
   }
 
-  // Lorsqu'on sélectionne une personne existante
-  // → auto-remplissage des champs
+  // Lorsqu'on sélectionne une personne existante depuis le select :
+  // 1. Recherche la personne dans la liste locale (évite un appel API supplémentaire)
+  // 2. Pré-remplit les champs nom/prénom/entité/rôle avec ses données
+  // 3. Verrouille ces champs (disable) pour éviter que l'utilisateur
+  //    modifie des données qui ne correspondraient plus à la personne en base
   onPersonneSelectionnee(index: number): void {
   const groupe = this.personnes_ressource.at(index) as FormGroup;
 
@@ -141,10 +149,11 @@ isManual(index: number): boolean {
 
   if (!personne) return;
 
-  // 🔥 mode existant
+  // Bascule le mode en 'existing' pour que le payload envoyé au backend
+  // ne contienne que l'ID (et non les champs texte redondants)
   groupe.patchValue({ mode: 'existing' });
 
-  // remplissage auto
+  // Pré-remplissage visuel uniquement (les champs seront disabled)
   groupe.patchValue({
     nom: personne.nom,
     prenom: personne.prenom,
@@ -152,13 +161,16 @@ isManual(index: number): boolean {
     role: personne.role
   });
 
-  // verrouillage champs
+  // Verrouillage : empêche toute modification manuelle après sélection
+  // (setManualMode() permet de les réactiver si l'utilisateur change d'avis)
   groupe.get('nom')?.disable();
   groupe.get('prenom')?.disable();
   groupe.get('entites_fonctionnelles')?.disable();
   groupe.get('role')?.disable();
   }
 
+  // Bascule une personne en mode saisie manuelle :
+  // réinitialise le select et réactive les champs de texte
   setManualMode(index: number): void {
   const groupe = this.personnes_ressource.at(index) as FormGroup;
 
@@ -224,6 +236,13 @@ isManual(index: number): boolean {
 
 
   // ─── Soumission du formulaire ────────────────────────────
+  // Flux de validation en 3 étapes avant envoi :
+  //   1. Validation Angular (champs required, minLength…)
+  //   2. Validation métier manuelle (mode manual/existing cohérent)
+  //   3. Validation Zod du payload final (même schéma que le backend)
+  // Cette double validation (Angular + Zod) n'est pas un doublon :
+  //   - Angular valide l'état du formulaire UI
+  //   - Zod valide la structure exacte du JSON qui sera envoyé au backend
   onSubmit(): void {
   console.log("🚀 SUBMIT TRIGGERED");
   this.success = false;
@@ -235,6 +254,9 @@ isManual(index: number): boolean {
     return;
   }
 
+  // getRawValue() au lieu de .value : indispensable pour récupérer aussi
+  // les champs désactivés (disabled) comme nom/prénom des personnes en mode 'existing'.
+  // formulaire.value les ignorerait silencieusement.
   const raw = this.formulaire.getRawValue();
 
   // ✅ Validation manuelle des personnes en mode manual
@@ -250,7 +272,9 @@ isManual(index: number): boolean {
     }
   }
 
-  // Payload déjà correct dans ton code — pas de changement ici
+  // Construction du payload : on nettoie chaque personne selon son mode
+  // - 'existing' : on n'envoie que l'ID (le backend retrouve les données en base)
+  // - 'manual'   : on envoie les champs saisis (le backend les insère directement)
   const payload = {
     ...raw,
     personnes_ressource: raw.personnes_ressource.map((p: any) => {
@@ -285,6 +309,8 @@ isManual(index: number): boolean {
     next: () => {
       this.success = true;
       this.erreur = '';
+
+    localStorage.removeItem(this.STORAGE_KEY);
 
       this.formulaire.reset();
       this.personnes_ressource.clear();
@@ -332,30 +358,56 @@ private loadUsers(): void {
       }
 
       this.isLoadingPersonnes = false;
+        this.restoreBrouillon(); // Restaure après que la liste est disponible
     },
-    error: (err) => {
-      console.error('Erreur chargement personnes ressources', err);
-      this.personnesDisponibles = [];
-      this.isLoadingPersonnes = false;
-    }
+    
   });
 }
 
-addPersonneManuelle(): void {
-  const data = this.formulaire.get('personnes_ressource')?.value;
-  this.api.addPersonneRessource(data).subscribe({
-    next: (res) => {
-      console.log('Ajout OK', res);
-    },
-    error: (err) => {
-      console.error('Erreur ajout personne', err);
+  // Envoie une personne saisie manuellement vers le backend (ajout en base)
+  // ─── Brouillon localStorage ───────────────────────────────────────────────
+
+  // Restaure le formulaire depuis localStorage si un brouillon existe.
+  // Pour les FormArrays (personnes, fonctionnalités) on doit d'abord
+  // créer le bon nombre de groupes avant de patcher les valeurs,
+  // car patchValue seul n'ajoute pas de contrôles dynamiquement.
+  private restoreBrouillon(): void {
+    const saved = localStorage.getItem(this.STORAGE_KEY);
+    if (!saved) return;
+
+    try {
+      const data = JSON.parse(saved);
+
+      // Recréer les groupes personnes_ressource
+      this.personnes_ressource.clear();
+      (data.personnes_ressource || []).forEach(() => {
+        this.personnes_ressource.push(this.createPersonne());
+      });
+
+      // Recréer les groupes fonctionnalités avec leurs profils
+      this.fonctionnalites.clear();
+      (data.fonctionnalites || []).forEach((f: any) => {
+        const groupe = this.createFonctionnalite();
+        const profils = groupe.get('profils') as FormArray;
+        profils.clear();
+        (f.profils || []).forEach(() => profils.push(this.createProfil()));
+        this.fonctionnalites.push(groupe);
+      });
+
+      // Patcher toutes les valeurs en une seule fois
+      this.formulaire.patchValue(data);
+    } catch {
+      // Brouillon corrompu — on le supprime pour éviter une boucle d'erreur
+      localStorage.removeItem(this.STORAGE_KEY);
     }
-  });
-}
+  }
+
 
   // ─── Initialisation UX ───────────────────────────────────
 
-  // Assure qu'il y a toujours au moins 1 bloc affiché
+  // Assure qu'il y a toujours au moins 1 bloc affiché au démarrage et après reset.
+  // Appelé dans ngOnInit() et après un envoi réussi (formulaire.reset() vide les FormArrays).
+  // Le paramètre false dans addFonctionnalite(false) désactive le scroll au démarrage.
   private ensureStarterBlocks(): void {
     if (this.personnes_ressource.length === 0) {
       this.addPersonne();
@@ -368,7 +420,9 @@ addPersonneManuelle(): void {
 
 
   // ─── Factory functions (création des objets FormGroup) ───
+  // Chaque factory retourne un FormGroup vierge prêt à être poussé dans un FormArray
 
+  // Crée un groupe personne ressource (mode existant par défaut)
   private createPersonne(): FormGroup {
     return this.fb.group({
       mode: ['existing'],
@@ -380,6 +434,7 @@ addPersonneManuelle(): void {
     });
   }
 
+  // Crée un groupe fonctionnalité avec un profil vide par défaut
   private createFonctionnalite(): FormGroup {
     return this.fb.group({
       nom: ['', Validators.required],
@@ -387,6 +442,7 @@ addPersonneManuelle(): void {
     });
   }
 
+  // Crée un groupe profil (nom du rôle utilisateur)
   private createProfil(): FormGroup {
     return this.fb.group({
       nom: ['', Validators.required]
@@ -395,6 +451,7 @@ addPersonneManuelle(): void {
 
 
   // ─── UX : Scroll automatique ─────────────────────────────
+  // Fait défiler la page vers le bas après ajout d'une fonctionnalité
   private scrollToBottom(): void {
     if (typeof window !== 'undefined') {
       setTimeout(() => {

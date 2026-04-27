@@ -1,16 +1,24 @@
+// ─── Imports ────────────────────────────────────────────────
 const express = require("express");
 const cors = require("cors");
-const pool = require("./db");
-const { FormulaireSchema } = require("./schemas/formulaire.schema");
-const { submitFormulaire } = require("./services/formulaire.service");
+const pool = require("./db");                                          // Pool de connexions PostgreSQL
+const { submitFormulaire } = require("./services/formulaire.service"); // Logique métier
+const { validateFormulaire } = require("./middlewares/validate");       // Middleware de validation Zod
 
 const app = express();
 
+// ─── Middlewares globaux ─────────────────────────────────────
+
+// Autorise les requêtes cross-origin depuis le frontend Angular (dev)
 app.use(cors({
   origin: "http://localhost:4200",
   credentials: true
 }));
+
+// Parse automatiquement le body JSON des requêtes entrantes
 app.use(express.json());
+
+// Ajoute un en-tête Content-Security-Policy sur toutes les réponses
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
@@ -19,10 +27,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// ─── Routes ─────────────────────────────────────────────────
+
+// Route de bienvenue (vérification que le serveur tourne)
 app.get("/", (req, res) => {
   res.send("Bienvenue sur mon serveur Node.js 🚀");
 });
 
+// GET /api/testdb — vérifie la connexion à la base de données PostgreSQL
 app.get("/api/testdb", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW() AS server_time");
@@ -33,6 +45,7 @@ app.get("/api/testdb", async (req, res) => {
   }
 });
 
+// GET /api/users — liste tous les utilisateurs (pour le select du formulaire)
 app.get("/api/users", async (req, res) => {
   try {
     const result = await pool.query(
@@ -49,6 +62,8 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
+// GET /api/personne_ressource — liste les personnes ressources de référence
+// (formulaire_id IS NULL = personnes non liées à un formulaire existant)
 app.get("/api/personne_ressource", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -65,25 +80,21 @@ app.get("/api/personne_ressource", async (req, res) => {
   }
 });
 
-app.post("/api/formulaire", async (req, res) => {
-  const parsed = FormulaireSchema.safeParse(req.body);
+// POST /api/formulaire — reçoit et enregistre un formulaire complet
+// Étapes : validation Zod (middleware) → transaction SQL → insertions en cascade
+app.post("/api/formulaire", validateFormulaire, async (req, res) => {
+  // req.body est déjà validé et typé par le middleware validateFormulaire
 
-  if (!parsed.success) {
-    console.log("💥 ZOD ISSUES:", parsed.error.issues);
-    return res.status(400).json({
-      error: "Données invalides",
-      details: parsed.error.issues
-    });
-  }
-
+  // Obtention d'un client dédié pour la transaction
   const client = await pool.connect();
 
   try {
-    await client.query("BEGIN");
+    await client.query("BEGIN"); // Début de transaction
 
-    const formulaire = await submitFormulaire(client, parsed.data);
+    // Délègue toutes les insertions au service métier
+    const formulaire = await submitFormulaire(client, req.body);
 
-    await client.query("COMMIT");
+    await client.query("COMMIT"); // Valide la transaction si tout s'est bien passé
 
     res.status(201).json({
       success: true,
@@ -91,7 +102,7 @@ app.post("/api/formulaire", async (req, res) => {
       formulaireId: formulaire.id
     });
   } catch (err) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK"); // Annule tout en cas d'erreur
 
     const statusCode = err.statusCode || 500;
     console.error("Erreur insertion formulaire:", err);
@@ -100,10 +111,13 @@ app.post("/api/formulaire", async (req, res) => {
       error: statusCode === 500 ? `Erreur serveur : ${err.message}` : err.message
     });
   } finally {
-    client.release();
+    client.release(); // Restitue le client au pool dans tous les cas
   }
 });
 
+// ─── Middlewares d'erreur ────────────────────────────────────
+
+// 404 — route non reconnue
 app.use((req, res, next) => {
   console.warn(`404 - Route non trouvée: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
@@ -113,11 +127,13 @@ app.use((req, res, next) => {
   });
 });
 
+// 500 — erreur Express non gérée (fallback global)
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "Erreur serveur interne" });
 });
 
+// ─── Démarrage du serveur ────────────────────────────────────
 const PORT = 3000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Serveur lancé sur le port ${PORT}`);

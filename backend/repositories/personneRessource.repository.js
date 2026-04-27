@@ -1,3 +1,10 @@
+// ─── Repository : personne ressource ─────────────────────────────────────────
+// Regroupe les requêtes SQL liées aux personnes ressources :
+// recherche de référence et insertion rattachée à un formulaire.
+
+// Recherche une personne ressource de référence par ID
+// (formulaire_id IS NULL = personne générique, non liée à un formulaire)
+// Retourne null si introuvable
 async function findReferenceById(client, id) {
   const result = await client.query(
     `
@@ -13,6 +20,8 @@ async function findReferenceById(client, id) {
   return result.rows[0] || null;
 }
 
+// Insère une personne ressource rattachée à un formulaire spécifique
+// (mode manual ou copie d'une personne existante résolue par le service)
 async function insertForFormulaire(client, data) {
   const result = await client.query(
     `
@@ -24,8 +33,8 @@ async function insertForFormulaire(client, data) {
     [
       data.nom,
       data.prenom,
-      data.entites_fonctionnelles ?? null,
-      data.role ?? null,
+      data.entites_fonctionnelles ?? null,  // champ optionnel
+      data.role ?? null,                    // champ optionnel
       data.formulaire_id
     ]
   );
