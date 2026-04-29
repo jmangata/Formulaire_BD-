@@ -8,6 +8,8 @@ import {
   FormArray,
   Validators
 } from '@angular/forms';
+import { DragDropModule } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 // Service API pour communication backend
 import { ApiService } from '../services/api.service';
@@ -39,7 +41,7 @@ interface PersonneDisponible {
 @Component({
   selector: 'app-formulaire',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
   templateUrl: './formulaire.component.html',
   styleUrls: ['./formulaire.component.css']
 })
@@ -53,7 +55,7 @@ export class FormulaireComponent implements OnInit {
   isLoading = true;                      // Chargement users
   isLoadingPersonnes = true;            // Chargement personnes
   success = false;                      // Succès envoi
-  erreur = '';                       // Message erreur
+  erreur = '';
 
   // Classes CSS pour badges (affichage profils)
   private badgeClasses = ['badge-blue', 'badge-purple', 'badge-green'];
@@ -65,7 +67,7 @@ export class FormulaireComponent implements OnInit {
     // Initialisation du formulaire principal
     this.formulaire = this.fb.group({
       userid: ['', Validators.required], // utilisateur sélectionné
-      description_besoin: ['', [Validators.required, Validators.minLength(10)]],
+      description_besoin: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
       date_realisation: [''],
 
       // Tableaux dynamiques
@@ -110,9 +112,240 @@ export class FormulaireComponent implements OnInit {
     return this.fonctionnalites.at(fIndex).get('profils') as FormArray;
   }
 
-getPersonneIndexes(): number[] {
-  return this.personnes_ressource.controls.map((_, idx) => idx);
-}
+  private normalizeText(value: unknown): string {
+    return String(value ?? '').trim().toLowerCase();
+  }
+
+  private moveControl(array: FormArray, fromIndex: number, direction: -1 | 1): void {
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || fromIndex >= array.length || toIndex < 0 || toIndex >= array.length) {
+      return;
+    }
+
+    const control = array.at(fromIndex);
+    array.removeAt(fromIndex);
+    array.insert(toIndex, control);
+  }
+
+  movePersonne(index: number, direction: -1 | 1): void {
+    this.moveControl(this.personnes_ressource, index, direction);
+  }
+
+  moveFonctionnalite(index: number, direction: -1 | 1): void {
+    this.moveControl(this.fonctionnalites, index, direction);
+  }
+
+  // ─── Drag & Drop handlers ─────────────────────────────────
+  onPersonneDrop(event: CdkDragDrop<any[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    const control = this.personnes_ressource.at(event.previousIndex);
+    this.personnes_ressource.removeAt(event.previousIndex);
+    this.personnes_ressource.insert(event.currentIndex, control);
+  }
+
+  onFonctionnaliteDrop(event: CdkDragDrop<any[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    const control = this.fonctionnalites.at(event.previousIndex);
+    this.fonctionnalites.removeAt(event.previousIndex);
+    this.fonctionnalites.insert(event.currentIndex, control);
+  }
+
+  isDuplicatePersonne(index: number): boolean {
+    const signatures = this.personnes_ressource.controls.map((control) => {
+      const raw = control.getRawValue();
+      if (raw.mode === 'existing') {
+        const id = this.normalizeText(raw.personne_existante_id);
+        return id ? `existing:${id}` : '';
+      }
+
+      const manualSignature = [raw.nom, raw.prenom, raw.entites_fonctionnelles, raw.role]
+        .map((item) => this.normalizeText(item))
+        .join('|');
+
+      return manualSignature.replace(/\|/g, '') ? `manual:${manualSignature}` : '';
+    });
+
+    const current = signatures[index];
+    return current !== undefined && signatures.filter((signature) => signature === current).length > 1;
+  }
+
+  isDuplicateFonctionnalite(index: number): boolean {
+    const names = this.fonctionnalites.controls.map((control) => this.normalizeText(control.get('nom')?.value));
+    const current = names[index];
+    return current !== '' && names.filter((name) => name === current).length > 1;
+  }
+
+  getPersonneSuggestions(index: number): PersonneDisponible[] {
+    const groupe = this.personnes_ressource.at(index) as FormGroup;
+    const query = this.normalizeText([
+      groupe.get('nom')?.value,
+      groupe.get('prenom')?.value,
+      groupe.get('entites_fonctionnelles')?.value,
+      groupe.get('role')?.value
+    ].join(' '));
+
+    if (query.length < 2) {
+      return [];
+    }
+
+    return this.personnesDisponibles
+      .filter((personne) => {
+        const haystack = this.normalizeText([
+          personne.nom,
+          personne.prenom,
+          personne.entites_fonctionnelles,
+          personne.role
+        ].join(' '));
+        return haystack.includes(query);
+      })
+      .slice(0, 5);
+  }
+
+  applyPersonneSuggestion(index: number, personne: PersonneDisponible): void {
+    const groupe = this.personnes_ressource.at(index) as FormGroup;
+    groupe.patchValue({
+      mode: 'manual',
+      personne_existante_id: '',
+      nom: personne.nom ?? '',
+      prenom: personne.prenom ?? '',
+      entites_fonctionnelles: personne.entites_fonctionnelles ?? '',
+      role: personne.role ?? ''
+    });
+    groupe.get('nom')?.enable();
+    groupe.get('prenom')?.enable();
+    groupe.get('entites_fonctionnelles')?.enable();
+    groupe.get('role')?.enable();
+  }
+
+  getSelectedUserLabel(): string {
+    const userId = Number(this.formulaire.get('userid')?.value);
+    const user = this.users.find((item) => item.id === userId);
+    return user ? `${user.nom} ${user.prenom} — ${user.fonction}` : 'Non sélectionné';
+  }
+
+  getDescriptionPreview(maxLength = 140): string {
+    const value = String(this.formulaire.get('description_besoin')?.value ?? '').trim();
+    if (!value) {
+      return 'Aucune description saisie';
+    }
+    return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+  }
+
+  getSummaryCounts(): { personnes: number; fonctionnalites: number; profils: number } {
+    const profils = this.fonctionnalites.controls.reduce((total, fonctionnalite) => {
+      return total + ((fonctionnalite.get('profils') as FormArray)?.length ?? 0);
+    }, 0);
+
+    return {
+      personnes: this.personnes_ressource.length,
+      fonctionnalites: this.fonctionnalites.length,
+      profils
+    };
+  }
+
+  getPersonneSummary(index: number): string {
+    const groupe = this.personnes_ressource.at(index) as FormGroup;
+    const raw = groupe.getRawValue();
+    if (raw.mode === 'existing') {
+      const personne = this.personnesDisponibles.find((item) => item.id === Number(raw.personne_existante_id));
+      return personne ? `${personne.nom} ${personne.prenom}` : 'Personne existante sélectionnée';
+    }
+
+    const pieces = [raw.nom, raw.prenom, raw.entites_fonctionnelles, raw.role]
+      .map((item: string) => this.normalizeText(item) ? item : '')
+      .filter(Boolean);
+
+    return pieces.length > 0 ? pieces.join(' — ') : 'Personne manuelle vide';
+  }
+
+  getFonctionnaliteSummary(index: number): string {
+    const nom = this.normalizeText(this.fonctionnalites.at(index).get('nom')?.value);
+    const profils = this.getProfils(index).length;
+    return `${nom || 'Fonctionnalité sans nom'} (${profils} profil${profils > 1 ? 's' : ''})`;
+  }
+
+  // Messages d'erreur précis pour chaque champ
+  getErrorMessage(controlName: string, control: any, label: string): string {
+    if (!control || !control.invalid || !control.touched) return '';
+    if (control.errors?.['required']) return `${label} est obligatoire`;
+    if (control.errors?.['minlength']) return `${label} : minimum ${control.errors['minlength'].requiredLength} caractères`;
+    if (control.errors?.['maxlength']) return `${label} : maximum ${control.errors['maxlength'].requiredLength} caractères`;
+    return `${label} invalide`;
+  }
+
+  getPersonneFieldError(index: number, fieldName: string): string {
+    const control = this.personnes_ressource.at(index).get(fieldName);
+    const labels: Record<string, string> = {
+      nom: 'Nom',
+      prenom: 'Prénom',
+      entites_fonctionnelles: 'Entité fonctionnelle',
+      role: 'Rôle'
+    };
+    return this.getErrorMessage(fieldName, control, labels[fieldName] || fieldName);
+  }
+
+  getFonctionnaliteFieldError(index: number, fieldName: string): string {
+    const control = this.fonctionnalites.at(index).get(fieldName);
+    const labels: Record<string, string> = {
+      nom: 'Nom de la fonctionnalité'
+    };
+    return this.getErrorMessage(fieldName, control, labels[fieldName] || fieldName);
+  }
+
+  getProfilFieldError(fIndex: number, pIndex: number): string {
+    const control = this.getProfils(fIndex).at(pIndex).get('nom');
+    return this.getErrorMessage('nom', control, 'Profil');
+  }
+
+  // Validation complète du formulaire avec messages précis
+  getDetailedValidationErrors(): string[] {
+    const errors: string[] = [];
+
+    // Utilisateur
+    const userid = this.formulaire.get('userid');
+    if (userid?.invalid && userid?.touched) {
+      errors.push('Utilisateur : veuillez sélectionner un demandeur');
+    }
+
+    // Description
+    const desc = this.formulaire.get('description_besoin');
+    if (desc?.invalid && desc?.touched) {
+      if (desc.errors?.['required']) errors.push('Description : champ obligatoire');
+      else if (desc.errors?.['minlength']) errors.push(`Description : minimum ${desc.errors['minlength'].requiredLength} caractères`);
+      else if (desc.errors?.['maxlength']) errors.push(`Description : maximum ${desc.errors['maxlength'].requiredLength} caractères`);
+    }
+
+    // Personnes ressources
+    this.personnes_ressource.controls.forEach((control, i) => {
+      const raw = control.getRawValue();
+      if (raw.mode === 'manual') {
+        if (!raw.nom?.trim()) errors.push(`Personne ressource ${i + 1} : le nom est obligatoire`);
+        if (!raw.prenom?.trim()) errors.push(`Personne ressource ${i + 1} : le prénom est obligatoire`);
+      }
+      if (raw.mode === 'existing' && !raw.personne_existante_id) {
+        errors.push(`Personne ressource ${i + 1} : veuillez sélectionner une personne`);
+      }
+    });
+
+    // Fonctionnalités
+    this.fonctionnalites.controls.forEach((control, i) => {
+      const nom = control.get('nom');
+      if (nom?.invalid && nom?.touched) {
+        if (nom.errors?.['required']) errors.push(`Fonctionnalité ${i + 1} : le nom est obligatoire`);
+        else if (nom.errors?.['maxlength']) errors.push(`Fonctionnalité ${i + 1} : nom trop long (max ${nom.errors['maxlength'].requiredLength} caractères)`);
+      }
+      const profils = this.getProfils(i);
+      profils.controls.forEach((profil, j) => {
+        const profilNom = profil.get('nom');
+        if (profilNom?.invalid && profilNom?.touched) {
+          if (profilNom.errors?.['required']) errors.push(`Fonctionnalité ${i + 1}, Profil ${j + 1} : le nom est obligatoire`);
+          else if (profilNom.errors?.['maxlength']) errors.push(`Fonctionnalité ${i + 1}, Profil ${j + 1} : nom trop long (max ${profilNom.errors['maxlength'].requiredLength} caractères)`);
+        }
+      });
+    });
+
+    return errors;
+  }
 
 
   // ─── Gestion Personnes ressources ────────────────────────
@@ -127,13 +360,7 @@ getPersonneIndexes(): number[] {
 
   // Supprimer une personne
   removePersonne(index: number): void {
-    const el = document.querySelectorAll('.personnes-list .card')[index] as HTMLElement;
-    if (el) {
-      el.classList.add('removing');
-      setTimeout(() => this.personnes_ressource.removeAt(index), 200);
-    } else {
-      this.personnes_ressource.removeAt(index);
-    }
+    this.personnes_ressource.removeAt(index);
   }
 
   // Lorsqu'on sélectionne une personne existante depuis le select :
@@ -174,17 +401,23 @@ getPersonneIndexes(): number[] {
   // Bascule une personne en mode saisie manuelle :
   // réinitialise le select et réactive les champs de texte
   setManualMode(index: number): void {
-  const groupe = this.personnes_ressource.at(index) as FormGroup;
+    const groupe = this.personnes_ressource.at(index) as FormGroup;
 
-  groupe.patchValue({
-    mode: 'manual',
-    personne_existante_id: ''
-  });
+    // On repasse en mode manuel et on vide les valeurs préremplies
+    // pour éviter de conserver les données de la personne sélectionnée.
+    groupe.patchValue({
+      mode: 'manual',
+      personne_existante_id: '',
+      nom: '',
+      prenom: '',
+      entites_fonctionnelles: '',
+      role: ''
+    });
 
-  groupe.get('nom')?.enable();
-  groupe.get('prenom')?.enable();
-  groupe.get('entites_fonctionnelles')?.enable();
-  groupe.get('role')?.enable();
+    groupe.get('nom')?.enable();
+    groupe.get('prenom')?.enable();
+    groupe.get('entites_fonctionnelles')?.enable();
+    groupe.get('role')?.enable();
 }
 
   // ─── Gestion Fonctionnalités ─────────────────────────────
@@ -199,13 +432,7 @@ getPersonneIndexes(): number[] {
   }
 
   removeFonctionnalite(index: number): void {
-    const el = document.querySelectorAll('.fonctionnalites-list .card')[index] as HTMLElement;
-    if (el) {
-      el.classList.add('removing');
-      setTimeout(() => this.fonctionnalites.removeAt(index), 200);
-    } else {
-      this.fonctionnalites.removeAt(index);
-    }
+    this.fonctionnalites.removeAt(index);
   }
 
 
@@ -272,6 +499,18 @@ getPersonneIndexes(): number[] {
       this.erreur = `Personne ressource ${i + 1} : veuillez sélectionner une personne.`;
       return;
     }
+  }
+
+  const duplicatePersonneIndex = this.personnes_ressource.controls.findIndex((_, index) => this.isDuplicatePersonne(index));
+  if (duplicatePersonneIndex !== -1) {
+    this.erreur = `Doublon détecté : la personne ressource ${duplicatePersonneIndex + 1} est déjà présente.`;
+    return;
+  }
+
+  const duplicateFonctionnaliteIndex = this.fonctionnalites.controls.findIndex((_, index) => this.isDuplicateFonctionnalite(index));
+  if (duplicateFonctionnaliteIndex !== -1) {
+    this.erreur = `Doublon détecté : la fonctionnalité ${duplicateFonctionnaliteIndex + 1} est déjà ajoutée.`;
+    return;
   }
 
   // Construction du payload : on nettoie chaque personne selon son mode
@@ -432,17 +671,17 @@ private loadUsers(): void {
     return this.fb.group({
       mode: ['existing'],
       personne_existante_id: [''], // sélection existante
-      nom: [''],
-      prenom: [''],
-      entites_fonctionnelles: [''],
-      role: ['']
+      nom: ['', [Validators.maxLength(100)]],
+      prenom: ['', [Validators.maxLength(100)]],
+      entites_fonctionnelles: ['', [Validators.maxLength(150)]],
+      role: ['', [Validators.maxLength(100)]]
     });
   }
 
   // Crée un groupe fonctionnalité avec un profil vide par défaut
   private createFonctionnalite(): FormGroup {
     return this.fb.group({
-      nom: ['', Validators.required],
+      nom: ['', [Validators.required, Validators.maxLength(200)]],
       profils: this.fb.array([this.createProfil()])
     });
   }
@@ -450,7 +689,7 @@ private loadUsers(): void {
   // Crée un groupe profil (nom du rôle utilisateur)
   private createProfil(): FormGroup {
     return this.fb.group({
-      nom: ['', Validators.required]
+      nom: ['', [Validators.required, Validators.maxLength(100)]]
     });
   }
 

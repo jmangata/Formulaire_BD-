@@ -39,7 +39,7 @@
 
       <!-- Message d'erreur si champ invalide et touché -->
       <span class="err" *ngIf="formulaire.get('userid')?.invalid && formulaire.get('userid')?.touched">
-        Utilisateur obligatoire
+        {{ getErrorMessage('userid', formulaire.get('userid'), 'Utilisateur') }}
       </span>
     </div>
 
@@ -50,11 +50,14 @@
         id="description_besoin"
         formControlName="description_besoin"
         placeholder="Ex : création d’un module de gestion des congés avec validation RH et tableau de suivi..."
+        [class.err-input]="formulaire.get('description_besoin')?.invalid && formulaire.get('description_besoin')?.touched"
       ></textarea>
-      <small class="field-hint">Décrivez l’objectif, le problème rencontré et le résultat attendu.</small>
+      <div class="field-footer">
+        <small class="field-hint">Décrivez l’objectif, le problème rencontré et le résultat attendu.</small>
+        <span class="char-count" *ngIf="formulaire.get('description_besoin')?.value">{{ formulaire.get('description_besoin')?.value?.length || 0 }}/2000</span>
+      </div>
       <span class="err" *ngIf="formulaire.get('description_besoin')?.invalid && formulaire.get('description_besoin')?.touched">
-      
-      Description obligatoire (minimum 10 caractères)
+        {{ getErrorMessage('description_besoin', formulaire.get('description_besoin'), 'Description') }}
       </span>
     </div>
 
@@ -73,15 +76,18 @@
     </p>
 
     <!-- FormArray pour les personnes ressources -->
-    <div formArrayName="personnes_ressource" class="personnes-list">
+    <div formArrayName="personnes_ressource" class="personnes-list" cdkDropList (cdkDropListDropped)="onPersonneDrop($event)">
       <!-- Boucle sur chaque personne du FormArray -->
-     <div *ngFor="let index of getPersonneIndexes()" [formGroupName]="index" class="card">
+      <div *ngFor="let p of personnes_ressource.controls; let i = index" [formGroupName]="i" class="card" cdkDrag>
 
         <!-- En-tête de la carte personne -->
         <div class="card-header">
 
   <!-- LEFT -->
-  <span class="card-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="100%" height="100%" fill="currentColor"><path d="M367-487q-47-47-47-113v-140q0-25 17.5-42.5T380-800q15 0 28.5 7t21.5 20q8-13 21.5-20t28.5-7q15 0 28.5 7t21.5 20q8-13 21.5-20t28.5-7q25 0 42.5 17.5T640-740v140q0 66-47 113t-113 47q-66 0-113-47Zm169.5-56.5Q560-567 560-600v-100H400v100q0 33 23.5 56.5T480-520q33 0 56.5-23.5ZM160-120v-112q0-34 17.5-62.5T224-338q62-31 126-46.5T480-400q66 0 130 15.5T736-338q29 15 46.5 43.5T800-232v112H160Zm80-80h480v-32q0-11-5.5-20T700-266q-54-27-109-40.5T480-320q-56 0-111 13.5T260-266q-9 5-14.5 14t-5.5 20v32Zm240 0Zm0-500Z"/></svg></span>Personne {{ index + 1 }}
+  <div class="card-drag-handle" cdkDragHandle>
+    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M360-160q-33 0-56.5-23.5T280-240q0-33 23.5-56.5T360-320q33 0 56.5 23.5T440-240q0 33-23.5 56.5T360-160Zm240 0q-33 0-56.5-23.5T520-240q0-33 23.5-56.5T600-320q33 0 56.5 23.5T680-240q0 33-23.5 56.5T600-160ZM360-400q-33 0-56.5-23.5T280-480q0-33 23.5-56.5T360-560q33 0 56.5 23.5T440-480q0 33-23.5 56.5T360-400Zm240 0q-33 0-56.5-23.5T520-480q0-33 23.5-56.5T600-560q33 0 56.5 23.5T680-480q0 33-23.5 56.5T600-400ZM360-640q-33 0-56.5-23.5T280-720q0-33 23.5-56.5T360-800q33 0 56.5 23.5T440-720q0 33-23.5 56.5T360-640Zm240 0q-33 0-56.5-23.5T520-720q0-33 23.5-56.5T600-800q33 0 56.5 23.5T680-720q0 33-23.5 56.5T600-640Z"/></svg>
+  </div>
+  <span class="card-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="100%" height="100%" fill="currentColor"><path d="M367-487q-47-47-47-113v-140q0-25 17.5-42.5T380-800q15 0 28.5 7t21.5 20q8-13 21.5-20t28.5-7q15 0 28.5 7t21.5 20q8-13 21.5-20t28.5-7q25 0 42.5 17.5T640-740v140q0 66-47 113t-113 47q-66 0-113-47Zm169.5-56.5Q560-567 560-600v-100H400v100q0 33 23.5 56.5T480-520q33 0 56.5-23.5ZM160-120v-112q0-34 17.5-62.5T224-338q62-31 126-46.5T480-400q66 0 130 15.5T736-338q29 15 46.5 43.5T800-232v112H160Zm80-80h480v-32q0-11-5.5-20T700-266q-54-27-109-40.5T480-320q-56 0-111 13.5T260-266q-9 5-14.5 14t-5.5 20v32Zm240 0Zm0-500Z"/></svg></span>Personne {{ i + 1 }}
   </span>
 
   <!-- RIGHT : actions groupées côte à côte -->
@@ -89,8 +95,8 @@
     <!-- Affiché uniquement en mode 'existing' (sélection depuis la base).
          En mode 'manual' ce bouton disparaît car les champs sont déjà actifs.
          Cliquer dessus appelle setManualMode(i) : vide le select, réactive les champs texte. -->
-    <button type="button" class="btn-mode" (click)="setManualMode(index)" *ngIf="p.get('mode')?.value !== 'manual'">Saisir manuellement</button>
-    <button type="button" class="btn-del" (click)="removePersonne(index)">Supprimer</button>
+    <button type="button" class="btn-mode" (click)="setManualMode(i)" *ngIf="p.get('mode')?.value !== 'manual'">Saisir manuellement</button>
+    <button type="button" class="btn-del" (click)="removePersonne(i)">Supprimer</button>
   </div>
 
 </div>
@@ -118,25 +124,57 @@
           </small>
         </div>
 
+        <div class="dup-warning" *ngIf="isDuplicatePersonne(i)">
+          Cette personne ressource semble déjà être présente dans le formulaire.
+        </div>
+
         <!-- Champs manuels pour la personne -->
         <div class="grid2" *ngIf="personnes_ressource.at(i).get('mode')?.value === 'manual'">
 
               <div class ="field">
-            <label>Nom</label>
-            <input formControlName="nom" placeholder="Nom" />
+            <label>Nom <span class="required">*</span></label>
+            <input formControlName="nom" placeholder="Nom" [class.err-input]="p.get('nom')?.invalid && p.get('nom')?.touched" />
+            <div class="field-footer">
+              <span class="err" *ngIf="p.get('nom')?.invalid && p.get('nom')?.touched">{{ getPersonneFieldError(i, 'nom') }}</span>
+              <span class="char-count" *ngIf="p.get('nom')?.value">{{ p.get('nom')?.value?.length || 0 }}/100</span>
+            </div>
           </div>
           <div class="field">
-            <label>Prénom</label>
-            <input formControlName="prenom" placeholder="Prénom" />
+            <label>Prénom <span class="required">*</span></label>
+            <input formControlName="prenom" placeholder="Prénom" [class.err-input]="p.get('prenom')?.invalid && p.get('prenom')?.touched" />
+            <div class="field-footer">
+              <span class="err" *ngIf="p.get('prenom')?.invalid && p.get('prenom')?.touched">{{ getPersonneFieldError(i, 'prenom') }}</span>
+              <span class="char-count" *ngIf="p.get('prenom')?.value">{{ p.get('prenom')?.value?.length || 0 }}/100</span>
+            </div>
           </div>
           <div class="field">
             <label>Entité</label>
-            <input formControlName="entites_fonctionnelles" placeholder="Entité fonctionnelle" />
+            <input formControlName="entites_fonctionnelles" placeholder="Entité fonctionnelle" [class.err-input]="p.get('entites_fonctionnelles')?.invalid && p.get('entites_fonctionnelles')?.touched" />
+            <div class="field-footer">
+              <span class="err" *ngIf="p.get('entites_fonctionnelles')?.invalid && p.get('entites_fonctionnelles')?.touched">{{ getPersonneFieldError(i, 'entites_fonctionnelles') }}</span>
+              <span class="char-count" *ngIf="p.get('entites_fonctionnelles')?.value">{{ p.get('entites_fonctionnelles')?.value?.length || 0 }}/150</span>
+            </div>
           </div>
           <div class="field">
             <label>Rôle</label>
-            <input formControlName="role" placeholder="Ex : référent métier" />
+            <input formControlName="role" placeholder="Ex : référent métier" [class.err-input]="p.get('role')?.invalid && p.get('role')?.touched" />
+            <div class="field-footer">
+              <span class="err" *ngIf="p.get('role')?.invalid && p.get('role')?.touched">{{ getPersonneFieldError(i, 'role') }}</span>
+              <span class="char-count" *ngIf="p.get('role')?.value">{{ p.get('role')?.value?.length || 0 }}/100</span>
+            </div>
           </div>
+        </div>
+
+        <div class="autocomplete-panel" *ngIf="isManual(i) && getPersonneSuggestions(i).length > 0">
+          <p class="autocomplete-title">Suggestions rapides</p>
+          <button
+            type="button"
+            class="autocomplete-item"
+            *ngFor="let personne of getPersonneSuggestions(i)"
+            (click)="applyPersonneSuggestion(i, personne)"
+          >
+            {{ personne.nom }} {{ personne.prenom }} — {{ personne.entites_fonctionnelles }} — {{ personne.role }}
+          </button>
         </div>
       </div>
     </div>
@@ -151,26 +189,38 @@
       Indiquez les fonctionnalités attendues ainsi que les profils concernés.
     </p>
 
-    <div formArrayName="fonctionnalites" class="fonctionnalites-list">
-      <div *ngFor="let f of fonctionnalites.controls; let i = index" [formGroupName]="i" class="card">
+    <div formArrayName="fonctionnalites" class="fonctionnalites-list" cdkDropList (cdkDropListDropped)="onFonctionnaliteDrop($event)">
+      <div *ngFor="let f of fonctionnalites.controls; let i = index" [formGroupName]="i" class="card" cdkDrag>
         <div class="card-header">
-          <span class="card-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="100%" height="100%" fill="currentColor"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></svg></span>Fonctionnalité {{ index + 1 }}</span>
+          <div class="card-drag-handle" cdkDragHandle>
+            <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M360-160q-33 0-56.5-23.5T280-240q0-33 23.5-56.5T360-320q33 0 56.5 23.5T440-240q0 33-23.5 56.5T360-160Zm240 0q-33 0-56.5-23.5T520-240q0-33 23.5-56.5T600-320q33 0 56.5 23.5T680-240q0 33-23.5 56.5T600-160ZM360-400q-33 0-56.5-23.5T280-480q0-33 23.5-56.5T360-560q33 0 56.5 23.5T440-480q0 33-23.5 56.5T360-400Zm240 0q-33 0-56.5-23.5T520-480q0-33 23.5-56.5T600-560q33 0 56.5 23.5T680-480q0 33-23.5 56.5T600-400ZM360-640q-33 0-56.5-23.5T280-720q0-33 23.5-56.5T360-800q33 0 56.5 23.5T440-720q0 33-23.5 56.5T360-640Zm240 0q-33 0-56.5-23.5T520-720q0-33 23.5-56.5T600-800q33 0 56.5 23.5T680-720q0 33-23.5 56.5T600-640Z"/></svg>
+          </div>
+          <span class="card-label"><span class="icon-inline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="100%" height="100%" fill="currentColor"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></svg></span>Fonctionnalité {{ i + 1 }}</span>
           <button type="button" class="btn-del" (click)="removeFonctionnalite(i)">Supprimer</button>
+        </div>
+
+        <div class="dup-warning" *ngIf="isDuplicateFonctionnalite(i)">
+          Cette fonctionnalité a déjà été ajoutée dans le formulaire.
         </div>
 
         <!-- Nom de la fonctionnalité -->
         <div class="field">
           <label>Nom de la fonctionnalité <span class="required">*</span></label>
-          <input formControlName="nom" placeholder="Ex : gestion des congés" />
-          <small class="field-hint">Donnez un nom simple et concret à la fonctionnalité.</small>
+          <input formControlName="nom" placeholder="Ex : gestion des congés" [class.err-input]="f.get('nom')?.invalid && f.get('nom')?.touched" />
+          <div class="field-footer">
+            <small class="field-hint">Donnez un nom simple et concret à la fonctionnalité.</small>
+            <span class="char-count" *ngIf="f.get('nom')?.value">{{ f.get('nom')?.value?.length || 0 }}/200</span>
+          </div>
+          <span class="err" *ngIf="f.get('nom')?.invalid && f.get('nom')?.touched">{{ getFonctionnaliteFieldError(i, 'nom') }}</span>
         </div>
 
         <!-- Profils utilisateurs -->
         <p class="profils-label">Profils utilisateurs</p>
         <div formArrayName="profils">
-          <div *ngFor="let p of getProfils(i).controls; let j = index" [formGroupName]="j" class="profil-row">
+          <div *ngFor="let pr of getProfils(i).controls; let j = index" [formGroupName]="j" class="profil-row">
             <span class="badge" [ngClass]="getBadgeClass(j)">Profil {{ j + 1 }}</span>
             <input formControlName="nom" placeholder="Ex : gestionnaire RH" />
+            <span class="err err-inline" *ngIf="pr.get('nom')?.invalid && pr.get('nom')?.touched">{{ getProfilFieldError(i, j) }}</span>
             <button type="button" class="btn-del-sm" (click)="removeProfil(i, j)"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="16px" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg></button>
           </div>
         </div>
@@ -182,6 +232,43 @@
     <button type="button" class="btn-add" (click)="addFonctionnalite()"><span class="icon-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="100%" height="100%" fill="currentColor"><path d="M480-480ZM370-80l-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-74 56q-22-11-45-18.5T714-558l63-48-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q17 17 36.5 30.5T400-275q1 57 23.5 107T484-80H370Zm41-279q6-20 14.5-38.5T445-433q-11-8-17-20.5t-6-26.5q0-25 17.5-42.5T482-540q14 0 27 6.5t21 17.5q17-11 35-19.5t38-13.5q-18-32-50-51.5T482-620q-59 0-99.5 41T342-480q0 38 18.5 70.5T411-359Zm269 199 120-120-120-120-28 28 72 72H560v40h163l-71 72 28 28Zm-141.5 21.5Q480-197 480-280t58.5-141.5Q597-480 680-480t141.5 58.5Q880-363 880-280t-58.5 141.5Q763-80 680-80t-141.5-58.5Z"/></svg></span>Ajouter une fonctionnalité métier</button>
 
     <!-- Bouton de soumission -->
+    <div class="summary-panel" *ngIf="formulaire.get('userid')?.value || formulaire.get('description_besoin')?.value || personnes_ressource.length || fonctionnalites.length">
+      <p class="section-title">Résumé avant envoi</p>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <h3>Demandeur</h3>
+          <p>{{ getSelectedUserLabel() }}</p>
+        </div>
+        <div class="summary-box">
+          <h3>Description</h3>
+          <p>{{ getDescriptionPreview() }}</p>
+        </div>
+        <div class="summary-box">
+          <h3>Volumes</h3>
+          <p>{{ getSummaryCounts().personnes }} personnes · {{ getSummaryCounts().fonctionnalites }} fonctionnalités · {{ getSummaryCounts().profils }} profils</p>
+        </div>
+      </div>
+
+      <div class="summary-columns">
+        <div class="summary-column">
+          <h4>Personnes ressources</h4>
+          <ul>
+            <li *ngFor="let personne of personnes_ressource.controls; let i = index">
+              {{ i + 1 }}. {{ getPersonneSummary(i) }}
+            </li>
+          </ul>
+        </div>
+        <div class="summary-column">
+          <h4>Fonctionnalités</h4>
+          <ul>
+            <li *ngFor="let fonctionnalite of fonctionnalites.controls; let i = index">
+              {{ i + 1 }}. {{ getFonctionnaliteSummary(i) }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div class="submit-row">
       <p class="submit-note"><span class="required">*</span> Champs obligatoires</p>
       <!-- Désactivé tant que le formulaire est invalide (champs required non remplis)
