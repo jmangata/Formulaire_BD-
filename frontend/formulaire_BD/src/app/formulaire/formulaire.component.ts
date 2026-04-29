@@ -78,13 +78,11 @@ export class FormulaireComponent implements OnInit {
 
   // ─── Initialisation du composant ─────────────────────────
   ngOnInit(): void {
-    this.ensureStarterBlocks();          // Ajoute au moins 1 bloc par défaut
     this.loadUsers();                   // Charge utilisateurs
-    this.loadPersonnesDisponibles();    // Charge personnes existantes
-
+    this.loadPersonnesDisponibles();    // Charge personnes existantes + restaure brouillon
 
     this.formulaire.valueChanges.subscribe(() => {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.formulaire.value));
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.formulaire.getRawValue()));
     });
   }
   // Retourne true si la personne à cet index est en mode saisie manuelle
@@ -111,6 +109,10 @@ export class FormulaireComponent implements OnInit {
   getProfils(fIndex: number): FormArray {
     return this.fonctionnalites.at(fIndex).get('profils') as FormArray;
   }
+
+getPersonneIndexes(): number[] {
+  return this.personnes_ressource.controls.map((_, idx) => idx);
+}
 
 
   // ─── Gestion Personnes ressources ────────────────────────
@@ -364,7 +366,6 @@ private loadUsers(): void {
   });
 }
 
-  // Envoie une personne saisie manuellement vers le backend (ajout en base)
   // ─── Brouillon localStorage ───────────────────────────────────────────────
 
   // Restaure le formulaire depuis localStorage si un brouillon existe.
@@ -373,7 +374,10 @@ private loadUsers(): void {
   // car patchValue seul n'ajoute pas de contrôles dynamiquement.
   private restoreBrouillon(): void {
     const saved = localStorage.getItem(this.STORAGE_KEY);
-    if (!saved) return;
+    if (!saved) {
+      this.ensureStarterBlocks();
+      return;
+    }
 
     try {
       const data = JSON.parse(saved);
@@ -399,6 +403,7 @@ private loadUsers(): void {
     } catch {
       // Brouillon corrompu — on le supprime pour éviter une boucle d'erreur
       localStorage.removeItem(this.STORAGE_KEY);
+      this.ensureStarterBlocks();
     }
   }
 

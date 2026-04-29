@@ -159,6 +159,11 @@
 .card.removing {
   animation: cardOut 0.2s ease forwards;
   pointer-events: none;
+  overflow: hidden;
+  max-height: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Effet cascade : chaque card apparaît avec un léger décalage */
