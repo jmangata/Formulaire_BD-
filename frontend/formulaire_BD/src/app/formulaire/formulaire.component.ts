@@ -8,8 +8,7 @@ import {
   FormArray,
   Validators
 } from '@angular/forms';
-import { DragDropModule } from '@angular/cdk/drag-drop';
-import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+
 
 // Service API pour communication backend
 import { ApiService } from '../services/api.service';
@@ -41,7 +40,7 @@ interface PersonneDisponible {
 @Component({
   selector: 'app-formulaire',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './formulaire.component.html',
   styleUrls: ['./formulaire.component.css']
 })
@@ -136,19 +135,7 @@ export class FormulaireComponent implements OnInit {
   }
 
   // ─── Drag & Drop handlers ─────────────────────────────────
-  onPersonneDrop(event: CdkDragDrop<any[]>): void {
-    if (event.previousIndex === event.currentIndex) return;
-    const control = this.personnes_ressource.at(event.previousIndex);
-    this.personnes_ressource.removeAt(event.previousIndex);
-    this.personnes_ressource.insert(event.currentIndex, control);
-  }
-
-  onFonctionnaliteDrop(event: CdkDragDrop<any[]>): void {
-    if (event.previousIndex === event.currentIndex) return;
-    const control = this.fonctionnalites.at(event.previousIndex);
-    this.fonctionnalites.removeAt(event.previousIndex);
-    this.fonctionnalites.insert(event.currentIndex, control);
-  }
+  
 
   isDuplicatePersonne(index: number): boolean {
     const signatures = this.personnes_ressource.controls.map((control) => {

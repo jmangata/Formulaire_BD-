@@ -1,60 +1,50 @@
 const { loadContext } = require("../utils/context");
 const { buildDecision } = require("../utils/decision");
 const { read } = require("../utils/memory");
+const { detectProjectStructure, buildSmartWindsurfPrompt, buildStandardPrompt } = require("../utils/windsurf");
 const logger = require("../utils/logger");
 
-function buildSmartContext(decision) {
-  const fileMap = {
-    frontend: "formulaire.component.ts, formulaire.component.html, formulaire.schema.ts",
-    backend: "index.js, formulaire.service.js, formulaire.repository.js, formulaire.schema.js",
-    docker: "docker-compose.yml, Dockerfile"
-  };
-  const constraintMap = {
-    frontend: "ReactiveForms, FormArray, Zod validation frontend",
-    backend: "Express 5, Zod validation backend, PostgreSQL transactions",
-    docker: "Docker Compose, PostGIS, pm2"
-  };
-  return `
-SMART MODE — ENRICHISSEMENT AUTOMATIQUE:
-- Fichiers concernés : ${fileMap[decision.scope] || "projet complet"}
-- Contraintes détectées : ${constraintMap[decision.scope] || "aucune"}
-- Type de tâche : ${decision.type}
-- Priorité : ${decision.priority}
-`;
-}
-
-
 async function run(input) {
+  const windsurf = input.includes("--windsurf") || input.includes("--cascade");
   const smart = input.includes("--smart");
-  const question = input.replace("--smart", "").trim();
- 
+  const question = input.replace(/--(windsurf|cascade|smart)/g, "").trim();
+
+  if (!question) {
+    logger.error("❌ Aucune question fournie. Exemple: npx my-cli ask \"ajoute la validation\"");
+    return;
+  }
+
   const context = loadContext();
   const learnings = read("learnings.md") || "No learnings yet.";
   const decision = buildDecision(question);
-  const prompt = `
-SYSTEM CONTEXT:
-${context}
+  const projectStructure = detectProjectStructure();
 
-LEARNED BEHAVIORS:
-${learnings}
+  let prompt;
 
-DECISION ANALYSIS:
-- scope: ${decision.scope}
-- type: ${decision.type}
-- priority: ${decision.priority}
-${smart ? buildSmartContext(decision) : ""}
-USER QUESTION:
-${question}
+  if (windsurf || smart) {
+    // Mode optimisé avec connaissance du projet
+    prompt = buildSmartWindsurfPrompt(decision, question, projectStructure);
+  } else {
+    // Mode standard basique
+    prompt = buildStandardPrompt(decision, question);
+  }
 
-INSTRUCTIONS:
-- Focus on the detected scope: ${decision.scope}
-- Adapt response to task type: ${decision.type}
-- Provide structured and actionable output
-- Avoid past mistakes from learnings
-`;
-
-  logger.info(smart ? "AI PROMPT (SMART MODE)" : "AI PROMPT (MODE 2)");
+  // Titre selon le mode
+  const modeLabel = windsurf ? "🌊 WINDSURF PROMPT" : smart ? "🧠 SMART PROMPT" : "AI PROMPT";
+  logger.info(`${modeLabel} (prêt pour Cascade)`);
+  
+  // Affichage stylisé
+  console.log("\n" + "═".repeat(70));
   console.log(prompt);
+  console.log("═".repeat(70) + "\n");
+
+  // Copie dans le presse-papier
+  try {
+    const { execSync } = require("child_process");
+    const escaped = prompt.replace(/"/g, '\\"').replace(/\n/g, "\\n");
+    execSync(`powershell -Command "Set-Clipboard -Value \\"${escaped}\\""`, { stdio: "ignore" });
+    logger.info("✅ Prompt copié dans le presse-papier !");
+  } catch (e) {}
 }
 
 module.exports = { run };
