@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  docker-compose-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose config
+        run: docker compose config --quiet
+
+  env-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check .env.example covers docker-compose variables
+        run: |
+          # Extract variable names referenced as ${VAR:-...} in docker-compose.yml
+          compose_vars=$(grep -oP '\$\{(\w+):-' docker-compose.yml | sed 's/\${//;s/:-//' | sort -u)
+          # Extract variable names from .env.example (non-comment, non-empty lines)
+          env_vars=$(grep -v '^#' .env.example | grep -v '^\s*$' | cut -d= -f1 | sort -u)
+
+          missing=""
+          for var in $compose_vars; do
+            if ! echo "$env_vars" | grep -qx "$var"; then
+              missing="$missing $var"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "::error::.env.example is missing variables used in docker-compose.yml:$missing"
+            exit 1
+          fi
+          echo "All docker-compose variables are documented in .env.example"
+
+  backend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax (dry-run)
+        run: node --check index.js
