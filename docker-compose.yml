@@ -6,16 +6,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      # Ces variables ne sont utilisées que si PGDATA est vide.
-      # Comme on monte un PGDATA existant, elles sont ignorées.
-      POSTGRES_DB: annuaire_ctm_1
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: madinina972
+      POSTGRES_DB: ${POSTGRES_DB:-annuaire_ctm_1}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-madinina972}
     volumes:
-      # Volume Docker nommé alimenté depuis le PGDATA de l'entreprise
       - pgdata_annuaire:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d annuaire_ctm_1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-annuaire_ctm_1}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,11 +27,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DB_HOST: postgis
-      DB_PORT: 5432
-      DB_NAME: annuaire_ctm_1
-      DB_USER: postgres
-      DB_PASSWORD: madinina972
+      DB_HOST: ${DB_HOST:-postgis}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-annuaire_ctm_1}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-madinina972}
     depends_on:
       postgis:
         condition: service_healthy
